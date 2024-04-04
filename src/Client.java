@@ -1,10 +1,7 @@
-import javax.crypto.Cipher;
-import java.net.*;
 import java.io.*;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.PublicKey;
-import java.util.Scanner;
+import java.net.*;
+import java.security.*;
+import javax.crypto.*;
 
 public class Client {
 
@@ -32,21 +29,36 @@ public class Client {
 
             BufferedReader consoleInput = new BufferedReader(new InputStreamReader(System.in));
 
-            String inputLine;
-            while ((inputLine = consoleInput.readLine()) != null) {
-                byte[] encryptedMessage = encryptCipher.doFinal(inputLine.getBytes());
-                outputStream.writeObject(encryptedMessage);
-                outputStream.flush();
+            // Hilo para leer mensajes del servidor
+            Thread readThread = new Thread(() -> {
+                try {
+                    while (true) {
+                        byte[] encryptedResponse = (byte[]) inputStream.readObject();
+                        String decryptedResponse = new String(decryptCipher.doFinal(encryptedResponse));
+                        System.out.println("Server: " + decryptedResponse);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
+            readThread.start();
 
-                byte[] encryptedResponse = (byte[]) inputStream.readObject();
-                String decryptedResponse = new String(decryptCipher.doFinal(encryptedResponse));
-                System.out.println("Server: " + decryptedResponse);
-            }
+            // Hilo para enviar mensajes al servidor
+            Thread writeThread = new Thread(() -> {
+                try {
+                    String inputLine;
+                    while ((inputLine = consoleInput.readLine()) != null) {
+                        byte[] encryptedMessage = encryptCipher.doFinal(inputLine.getBytes());
+                        outputStream.writeObject(encryptedMessage);
+                        outputStream.flush();
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
+            writeThread.start();
 
-            inputStream.close();
-            outputStream.close();
-            socket.close();
-        }catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

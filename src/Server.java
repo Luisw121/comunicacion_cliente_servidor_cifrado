@@ -34,21 +34,34 @@ public class Server {
 
             BufferedReader consoleInput = new BufferedReader(new InputStreamReader(System.in));
 
-            String inputLine;
-            while ((inputLine = consoleInput.readLine()) != null) {
-                byte[] encryptedMessage = encryptCipher.doFinal(inputLine.getBytes());
-                outputStream.writeObject(encryptedMessage);
-                outputStream.flush();
+            // Hilo para leer mensajes del cleinte
+            Thread readThread = new Thread(() -> {
+                try {
+                    while (true) {
+                        byte[] encryptedResponse = (byte[]) inputStream.readObject();
+                        String decryptedResponse = new String(decryptCipher.doFinal(encryptedResponse));
+                        System.out.println("Client: " + decryptedResponse);
+                    }
+                }catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
+            readThread.start();
 
-                byte[] encryptedResponse = (byte[]) inputStream.readObject();
-                String decryptedResponse = new String(decryptCipher.doFinal(encryptedResponse));
-                System.out.println("Client: " + decryptedResponse);
-            }
+            Thread writeThread = new Thread(() -> {
+                try {
+                    String inputLine;
+                    while ((inputLine = consoleInput.readLine()) != null) {
+                        byte[] encryptedMessage = encryptCipher.doFinal(inputLine.getBytes());
+                        outputStream.writeObject(encryptedMessage);
+                        outputStream.flush();
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
+            writeThread.start();
 
-            inputStream.close();
-            outputStream.close();
-            socket.close();
-            serverSocket.close();
         }catch (Exception e) {
             e.printStackTrace();
         }
